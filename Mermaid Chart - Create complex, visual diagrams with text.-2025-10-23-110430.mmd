@@ -1,0 +1,12 @@
+---
+config:
+  theme: redux
+---
+flowchart TD
+n1["Проверка целостности сообщения<br><span style='color:#00627a'>handleTextMessage in transport.websocket.handler.TransportWebSocketHandler.java</span>"] --> n2["Определение типа сообщения<br><span style='color:#00627a'>routeMessage in core.message.MessageRouter.java</span>"]
+    n2 --> n3["Роутинг по типу сообщения<br><span style='color:#00627a'>routeMessage in core.message.MessageRouter.java</span>"]
+    n3 --> n4["/UserMessageHandler<br>1. JSONNode -> PrettyString -> ChatMessage<br>2. Check isDouble message<br>3. Track message<br>4. GenerateSystemMessage<br>5. Generate answer"]
+    n3 --> n5["/SystemMessageHandler<br>1. JSONNode -> ChatMessage<br>2. Check isDouble message<br>3. Track message<br>4. GenerateSystemMessage<br>5. Generate answer"]
+    n4 --> n6["Отправка ответа<br><span style='color:#00627a'>sendUserMessage in transport.MessageSender.java</span><br>1. Поиск TransportSender по типу клиента<br>2. Вызов sendMessage для выбранного sender<br>3. Обработка ошибок отправки"]
+    n5 --> n6
+    n6 --> n7["Завершение обработки<br><span style='color:#00627a'>Логирование и возврат</span>"]
