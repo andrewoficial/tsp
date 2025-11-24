@@ -1,0 +1,50 @@
+sequenceDiagram
+    participant User
+    participant Client as WebSocket Client
+    participant Handler as TransportWebSocketHandler
+    participant Router as MessageRouter
+    participant UHandler as UserMessageHandler
+    participant SHandler as SystemMessageHandler
+    participant AI as AI Service (Generate Answer)
+    participant Sender as MessageSender
+
+
+    Note over User,Sender: Подключение пользователя (без изменений)
+    User->>Client: Инициация соединения (JWT Token)
+    Client->>Handler: WebSocket Connect
+    Handler-->>Client: Подтверждение подключения (ClientRegistry)
+
+    Note over User,Sender: Отправка и обработка сообщения
+    User->>Client: Send Message (JSON via WebSocket)
+    Client->>Handler: Receive Message
+    Handler->>Handler: Проверка целостности (handleTextMessage)
+    Handler->>Router: Определение типа (routeMessage)
+    Router->>Router: Роутинг по типу (routeMessage)
+    alt User Message
+        Router->>UHandler: Route to UserMessageHandler
+        UHandler->>UHandler: 1. JSONNode -> PrettyString -> ChatMessage
+        UHandler->>UHandler: 2. Check isDouble message
+        UHandler->>UHandler: 3. Track message
+        UHandler->>UHandler: 4. GenerateSystemMessage
+        UHandler->>AI: 5. Generate answer
+        AI-->>UHandler: Response
+    else System Message
+        Router->>SHandler: Route to SystemMessageHandler
+        SHandler->>SHandler: 1. JSONNode -> ChatMessage
+        SHandler->>SHandler: 2. Check isDouble message
+        SHandler->>SHandler: 3. Track message
+        SHandler->>SHandler: 4. GenerateSystemMessage
+        SHandler->>AI: 5. Generate answer
+        AI-->>SHandler: Response
+    end
+    UHandler->>Sender: Send Response (sendUserMessage)
+    alt or
+        SHandler->>Sender: Send Response (sendUserMessage)
+    end
+    Sender->>Sender: 1. Поиск TransportSender по типу клиента
+    Sender->>Sender: 2. Вызов sendMessage для выбранного sender
+    Sender->>Sender: 3. Обработка ошибок отправки
+    Sender-->>Handler: Processed
+    Handler-->>Client: Send Response (WebSocketTransportSender)
+
+ 
