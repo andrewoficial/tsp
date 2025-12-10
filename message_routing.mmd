@@ -1,50 +1,79 @@
 sequenceDiagram
-    participant User
-    participant Client as WebSocket Client
-    participant Handler as TransportWebSocketHandler
-    participant Router as MessageRouter
-    participant UHandler as UserMessageHandler
-    participant SHandler as SystemMessageHandler
-    participant AI as AI Service (Generate Answer)
-    participant Sender as MessageSender
-
-
-    Note over User,Sender: Подключение пользователя (без изменений)
-    User->>Client: Инициация соединения (JWT Token)
-    Client->>Handler: WebSocket Connect
-    Handler-->>Client: Подтверждение подключения (ClientRegistry)
-
-    Note over User,Sender: Отправка и обработка сообщения
-    User->>Client: Send Message (JSON via WebSocket)
-    Client->>Handler: Receive Message
-    Handler->>Handler: Проверка целостности (handleTextMessage)
-    Handler->>Router: Определение типа (routeMessage)
-    Router->>Router: Роутинг по типу (routeMessage)
-    alt User Message
-        Router->>UHandler: Route to UserMessageHandler
-        UHandler->>UHandler: 1. JSONNode -> PrettyString -> ChatMessage
-        UHandler->>UHandler: 2. Check isDouble message
-        UHandler->>UHandler: 3. Track message
-        UHandler->>UHandler: 4. GenerateSystemMessage
-        UHandler->>AI: 5. Generate answer
-        AI-->>UHandler: Response
-    else System Message
-        Router->>SHandler: Route to SystemMessageHandler
-        SHandler->>SHandler: 1. JSONNode -> ChatMessage
-        SHandler->>SHandler: 2. Check isDouble message
-        SHandler->>SHandler: 3. Track message
-        SHandler->>SHandler: 4. GenerateSystemMessage
-        SHandler->>AI: 5. Generate answer
-        AI-->>SHandler: Response
-    end
-    UHandler->>Sender: Send Response (sendUserMessage)
-    alt or
-        SHandler->>Sender: Send Response (sendUserMessage)
-    end
-    Sender->>Sender: 1. Поиск TransportSender по типу клиента
-    Sender->>Sender: 2. Вызов sendMessage для выбранного sender
-    Sender->>Sender: 3. Обработка ошибок отправки
-    Sender-->>Handler: Processed
-    Handler-->>Client: Send Response (WebSocketTransportSender)
-
- 
+participant User
+participant Client as WebSocket Client
+participant Rest as REST API
+participant Handler as TransportWebSocketHandler
+participant Router as MessageRouter
+participant UHandler as UserMessageHandler
+participant SHandler as SystemMessageHandler
+participant AI as AI Service (Generate Answer)
+participant Sender as MessageSender
+participant History as HistoryService
+Note over User,Sender: User Connection
+User->>Rest: Authorization Request (Obtain JWT Token)
+Rest-->>User: JWT Token
+User->>Client: Connection Initiation (Bearer Token)
+Client->>Handler: WebSocket Connect
+Handler-->>Client: Connection Confirmation (ClientRegistry)
+opt Client-side JWT Validation
+Client->>Rest: JWT Validation Check (/checkout)
+Rest-->>Client: Validation Response
+end
+Note over User,Sender: Initial Commands After Connection
+User->>Client: get_user_info (JSON via WebSocket, signed with Bearer)
+Client->>Handler: Receive Message
+Handler->>Handler: Integrity Check (handleTextMessage)
+Handler->>Router: Determine Type (routeMessage)
+Router->>Router: Routing by Type (routeMessage)
+Router->>SHandler: Route to SystemMessageHandler (system message)
+SHandler->>SHandler: 1. JSONNode -> ChatMessage
+SHandler->>SHandler: 2. Check isDouble message
+SHandler->>SHandler: 3. Track message
+SHandler->>SHandler: 4. GenerateSystemMessage
+SHandler->>AI: 5. Generate answer (user info JSON)
+AI-->>SHandler: Response
+SHandler->>Sender: Send Response (sendUserMessage)
+Sender->>Sender: 1. Search TransportSender by client type
+Sender->>Sender: 2. Call sendMessage for selected sender
+Sender->>Sender: 3. Handle sending errors
+Sender-->>Handler: Processed
+Handler-->>Client: Send Response (WebSocketTransportSender)
+User->>Client: get_history (JSON via WebSocket)
+Note over User,Sender: Similar processing as for get_user_info, response: multiple JSON messages from history
+opt if userRole === 'ADMIN' || 'ENGINEER'
+User->>Client: get_queue (JSON via WebSocket)
+Note over User,Sender: Similar processing, response: list of clients waiting for engineer
+end
+Note over User,Sender: Sending and Processing User Message
+User->>Client: Send Message (JSON via WebSocket)
+Client->>Handler: Receive Message
+Handler->>Handler: Integrity Check (handleTextMessage)
+Handler->>Router: Determine Type (routeMessage)
+Router->>Router: Routing by Type (routeMessage)
+alt User Message
+Router->>UHandler: Route to UserMessageHandler
+UHandler->>UHandler: 1. JSONNode -> PrettyString -> ChatMessage
+UHandler->>UHandler: 2. Check isDouble message
+UHandler->>UHandler: 3. Track message
+UHandler->>UHandler: Determine recipient (if not AI, redirect to another connection)
+UHandler->>History: Save to history for sender
+UHandler->>History: Save to history for recipient
+UHandler->>UHandler: 4. GenerateSystemMessage
+UHandler->>AI: 5. Generate answer
+AI-->>UHandler: Response
+UHandler->>Sender: Send Response (sendUserMessage)
+else System Message
+Router->>SHandler: Route to SystemMessageHandler
+SHandler->>SHandler: 1. JSONNode -> ChatMessage
+SHandler->>SHandler: 2. Check isDouble message
+SHandler->>SHandler: 3. Track message
+SHandler->>SHandler: 4. GenerateSystemMessage
+SHandler->>AI: 5. Generate answer
+AI-->>SHandler: Response
+SHandler->>Sender: Send Response (sendUserMessage)
+end
+Sender->>Sender: 1. Search TransportSender by client type
+Sender->>Sender: 2. Call sendMessage for selected sender
+Sender->>Sender: 3. Handle sending errors
+Sender-->>Handler: Processed
+Handler-->>Client: Send Response (WebSocketTransportSender)
