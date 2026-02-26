@@ -1,4 +1,4 @@
-package ru.igm.tsp.domain.model
+package ru.igm.tsp.domain.model.message
 
 data class Content(
     val type: String, // "text", "command" и т.д.
@@ -6,5 +6,5 @@ data class Content(
     val value: String = "", // для команд
     val provider: String = "",
     val language: String = "",
-    val elements: List<Any> = emptyList()
+    val elements: List<ElementOfContent> = emptyList()
 )

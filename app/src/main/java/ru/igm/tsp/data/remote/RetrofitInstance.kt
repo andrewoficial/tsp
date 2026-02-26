@@ -2,21 +2,16 @@ package ru.igm.tsp.data.remote
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import ru.igm.tsp.data.repository.AuthApiService
-
-// Замените на ваш реальный базовый URL
-private const val BASE_URL = "https://ws.safezone.support/"
+import ru.igm.tsp.data.local.ConfigManager
 
 object RetrofitInstance {
-    // Ленивая инициализация. Retrofit будет создан только при первом обращении.
-    private val retrofit by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
+
+    fun getApi(configManager: ConfigManager): AuthApiService {
+        val retrofit = Retrofit.Builder()
+            .baseUrl(configManager.apiUrl)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+        return retrofit.create(AuthApiService::class.java)
     }
 
-    val api: AuthApiService by lazy {
-        retrofit.create(AuthApiService::class.java)
-    }
 }

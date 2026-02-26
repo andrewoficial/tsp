@@ -7,17 +7,25 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import ru.igm.tsp.data.local.ConfigManager
 import ru.igm.tsp.data.remote.RetrofitInstance
 import ru.igm.tsp.data.repository.AuthRepository
 import ru.igm.tsp.domain.model.LoginRequest
+import ru.igm.tsp.data.local.SessionManager
+
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = AuthRepository(RetrofitInstance.api)
 
+    private val configManager = ConfigManager(application)
+    private val sessionManager = SessionManager(application)
+    private val repository = AuthRepository(configManager)
     // Приватный MutableStateFlow для изменения состояния
     private val _uiState = MutableStateFlow(AuthViewState())
     // Публичный StateFlow, на который будет подписан UI (только для чтения)
     val uiState: StateFlow<AuthViewState> = _uiState.asStateFlow()
+
+    val isLoggedIn: Boolean
+        get() = sessionManager.token != null
 
     init {
         loadCaptcha()
@@ -62,6 +70,10 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 onSuccess = { loginResponse ->
                     // TODO: Здесь нужно сохранить токен и перейти на экран чата
                     println("Успешный вход! Токен: ${loginResponse.token}")
+                    sessionManager.token = loginResponse.token
+                    sessionManager.userId = loginResponse.id
+                    sessionManager.username = loginResponse.role // или username, если он есть в ответе
+
                     _uiState.value = _uiState.value.copy(isLoading = false, isLoginSuccessful = true)
                 },
                 onFailure = { error ->
@@ -74,5 +86,10 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 }
             )
         }
+    }
+
+    fun saveUrls(apiUrl: String, wsUrl: String) {
+        configManager.apiUrl = apiUrl
+        configManager.wsUrl = wsUrl
     }
 }

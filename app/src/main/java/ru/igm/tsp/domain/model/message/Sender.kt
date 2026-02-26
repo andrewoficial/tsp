@@ -1,4 +1,4 @@
-package ru.igm.tsp.domain.model
+package ru.igm.tsp.domain.model.message
 
 data class Sender(
     val type: String,

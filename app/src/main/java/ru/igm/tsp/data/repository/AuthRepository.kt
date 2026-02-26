@@ -8,26 +8,24 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import ru.igm.tsp.data.local.ConfigManager
+import ru.igm.tsp.data.remote.RetrofitInstance
 
-// Интерфейс для Retrofit, описывающий API эндпоинты
-interface AuthApiService {
-    @GET("api/v1/auth/captcha")
-    suspend fun getCaptcha(): Response<CaptchaResponse>
-
-    @POST("api/v1/auth/login") // Замените на ваш URL, если он другой
-    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
-}
 
 // Сам класс-репозиторий, который будет использовать ViewModel
-class AuthRepository(private val apiService: AuthApiService) {
+class AuthRepository(private val configManager: ConfigManager) {
+
+    private val apiService = RetrofitInstance.getApi(configManager)
     companion object {
         private const val TAG = "AuthRepository"
     }
 
     suspend fun getCaptcha(): Result<CaptchaResponse> {
+        val fullUrl = "${configManager.apiUrl.trimEnd('/')}/${configManager.captchaPath.trimStart('/')}"
         return try {
             Log.i(TAG, "Start getting captcha...")
-            val response = apiService.getCaptcha()
+            Log.i(TAG, "Requesting captcha from: $fullUrl")
+            val response = apiService.getCaptcha(fullUrl)
             if (response.isSuccessful && response.body() != null) {
                 Log.i(TAG, "Received answer")
 
@@ -48,8 +46,13 @@ class AuthRepository(private val apiService: AuthApiService) {
     }
 
     suspend fun login(request: LoginRequest): Result<LoginResponse> {
+        val fullUrl = "${configManager.apiUrl.trimEnd('/')}/${configManager.loginPath.trimStart('/')}"
+
         return try {
-            val response = apiService.login(request)
+            Log.i(TAG, "Start login request...")
+            Log.i(TAG, "Requesting token from: $fullUrl")
+
+            val response = apiService.login(fullUrl, request)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {

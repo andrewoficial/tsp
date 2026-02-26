@@ -1,4 +1,7 @@
-package ru.igm.tsp.domain.model
+package ru.igm.tsp.domain.model.message
+
+import ru.igm.tsp.domain.model.message.Content
+import ru.igm.tsp.domain.model.message.Sender
 
 data class ChatMessage(
     val messageType: String,
